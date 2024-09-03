@@ -1,17 +1,18 @@
 // require('dotenv').config({path:'./env'})
 import dotenv from "dotenv"
+import {app} from './app.js'
 // import mongoose, { mongo } from "mongoose";
 // import { DB_NAME } from "./constants";
 import connectDB from "./db/index.js";
 
 dotenv.config({
-    path:'./env'
+    path:'./.env'//imp for extracting variables from env file
 })
-
+// const app = express();
 connectDB()
     .then(() => {
         app.listen(process.env.PORT || 8000, () => {
-            console.log(`sercver is runnign at port ${process.env.PORT}`);
+            console.log(`SERVER IS RUNNING AT PORT -> ${process.env.PORT}`);
         })
     })
     .catch((err) => {
@@ -34,7 +35,7 @@ connectDB()
 
 
 
-//FIRST APPROACH
+//FIRST APPROACH--> all code in single file
 /*import express from "express";
 const app=express()
 (async () => {

@@ -3,12 +3,18 @@ import { DB_NAME } from "../constants.js";
 
 const connectDB = async () => {
     try {
-        const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
-        console.log(`mongodb connected succesfully db hosted : ${connectionInstance.connection.host}`);
+        // Ensure MONGODB_URI does not end with a slash before appending DB_NAME
+        const mongoURI = `${process.env.MONGODB_URI.replace(/\/$/, '')}/${DB_NAME}`;
+        
+        const connectionInstance = await mongoose.connect(mongoURI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        console.log(`MongoDB connected successfully. DB hosted: ${connectionInstance.connection.host}`);
     } catch (error) {
-        console.log("Mongo db conmnection error", error);
-        process.exit(1)
+        console.log("MongoDB connection error", error);
+        process.exit(1);
     }
 }
 
-export default connectDB
+export default connectDB;
