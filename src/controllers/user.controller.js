@@ -29,7 +29,7 @@ const registerUser = asyncHandler(async (req, res) => {
     //detail lerrhe
     const { fullname, email, username, password } = req.body
     console.log("fullname", fullname);
-    console.log(1);
+    // console.log(1);
 
 
     //validating kr rhe
@@ -40,7 +40,7 @@ const registerUser = asyncHandler(async (req, res) => {
     ) {
         throw new ApiError(400,"all fields are req")
     }
-    console.log(2);
+    // console.log(2);
 
     //checking if existed already ir not
     const existedUser = await User.findOne({
@@ -52,7 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(409,"User with this email is already exists")
     }
 
-    console.log(3);
+    // console.log(3);
 //check for img and avaatar
     const avatarLocalPath = req.files?.avatar[0]?.path;
     // const coverImageLocalPath=req.files?.coverImage[0]?.path;
@@ -73,7 +73,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if (!avatar) {
          throw new ApiError(400,"avatar img is req")
     }
-    console.log(4);
+    // console.log(4);
     //create enrry in db
    const user=await User.create({
         fullname,
