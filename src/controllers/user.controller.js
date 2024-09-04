@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import jwt from "jsonwebtoken"
 //user vs User
 /*
 user ek hmara sainik h jo hmare bnaye methods se baat chit krega
@@ -103,12 +104,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const generateAccessNrefreshToken = async (userId)=>{
     try {
-        const user = await User.findById(userId)
+        const user = await User.findById(userId)//finding the user
        const accessToken= user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
         
         user.refreshToken = refreshToken//saving refresh token in DB
-        await user.save({ validateBeforeSave: false })//validation not needed c=kyuki req vgera wale sb aa jayenge errors vgera 
+        await user.save({ validateBeforeSave: false })//validation not needed kyuki req vgera wale sb aa jayenge errors vgera 
         return {accessToken,refreshToken}
     } catch (error) {
         throw new ApiError(500,"soething wen twronf while generatinf tokens")
@@ -126,7 +127,7 @@ const loginUser = asyncHandler(async (req, res) => {
     //takin data  from body
     const { email, username, password } = req.body
     //checking username and email
-    if (!username || !email) {
+    if (!username && !email) {
         throw new ApiError(400,"username or email is req")
     }
 
@@ -175,29 +176,74 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const logoutUser = asyncHandler(async (req, res) => {
     //find user
-   await User.findByIdAndUpdate(
-        req.user._id,
+   await User.findByIdAndUpdate(//user ki id nhi h logout time isilye middleware lgaya h auth wala
+        req.user._id,//ab access milgya user ka middleware se
         {
             $set: {
-                refreshToken:undefined
+                refreshToken:undefined//update kr rhe h rfrsh token ko taki logout hoje
             }
         }, {
-            new:true
+            new:true//return me new uodated value aayegs
         }
     )
+    //again cookies wala kam
     const options = {
         httpOnly: true,
         secure:true
     }
     return res
         .status(200)
+        //clearing cookies
         .clearCookie("accessToken", options)
         .clearCookie("refreshToken", options)
     .json(new ApiResponse(200,{},"user logged out"))
 
-    })
+})
+    
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+    
+    if (!incomingRefreshToken) {
+        throw new ApiError(401,"unauthorized req at token")
+    }
+
+   try {
+    const decodedToken= jwt.verify(
+         incomingRefreshToken,
+         process.env.REFRESH_TOKEN_SECRET
+     )
+     const user = User.findById(decodedToken?._id)
+      if (!user) {
+         throw new ApiError(401,"invalid refreshtoken")
+     }
+     if (incomingRefreshToken !== user?.refreshToken) {
+          throw new ApiError(401,"refreshtoken is expired or used")
+     }
+ 
+     const options = {
+         httpOnly: true,
+         secure:true
+     }
+    const{accessToken,newrefreshToken}= await generateAccessNrefreshToken(user._id)
+     return res
+         .status(200)
+         .cookie("accessToken", accessToken,options)
+         .cookie("refreshToken", newrefreshToken, options)
+         .json(
+             new ApiResponse(
+                 200,
+                 { accessToken, newrefreshToken },
+                 "Access token refreshed"
+         )
+     )
+   } catch (error) {
+       throw new ApiError(401, error?.message || "invalid refrehs token")
+       
+   }
+})
 export {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 }

@@ -12,3 +12,6 @@ const storage = multer.diskStorage({
 export const upload = multer({
      storage,
 })
+
+//How multer Handles next()?
+// When you create an upload middleware with multer, it internally handles the file processing and then automatically calls next() after the file has been processed and stored according to the configuration you provided.
