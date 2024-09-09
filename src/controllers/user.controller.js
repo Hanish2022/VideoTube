@@ -101,8 +101,8 @@ const registerUser = asyncHandler(async (req, res) => {
         
     )
 })
-
 const generateAccessNrefreshToken = async (userId)=>{
+
     try {
         const user = await User.findById(userId)//finding the user
        const accessToken= user.generateAccessToken()
@@ -201,30 +201,34 @@ const logoutUser = asyncHandler(async (req, res) => {
 })
     
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-    
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken//refresh token cookies se access hoga || koi mobl=ile app use kr rha h to body se access hoga
+    //we will compare this incomingtoken with our db token later
     if (!incomingRefreshToken) {
         throw new ApiError(401,"unauthorized req at token")
     }
-
+    //now verify the incomingtoken with JWT
    try {
     const decodedToken= jwt.verify(
-         incomingRefreshToken,
-         process.env.REFRESH_TOKEN_SECRET
-     )
-     const user = User.findById(decodedToken?._id)
+         incomingRefreshToken,//token
+         process.env.REFRESH_TOKEN_SECRET//secret
+       )
+       //now we have convrrtied incoming token into decoded token
+     const user = User.findById(decodedToken?._id)//refrshtoken me id di thi hmne models me us se refreshtoken find kro db me
       if (!user) {
          throw new ApiError(401,"invalid refreshtoken")
-     }
+       }
+       //ccompare the incoming one and refreshtoken of user in db
      if (incomingRefreshToken !== user?.refreshToken) {
           throw new ApiError(401,"refreshtoken is expired or used")
      }
- 
+ //cookies me bhejdo ab verified h tokens
      const options = {
          httpOnly: true,
          secure:true
-     }
-    const{accessToken,newrefreshToken}= await generateAccessNrefreshToken(user._id)
+       }
+       //naye tokens generate krwado ab
+       const { accessToken, newrefreshToken } = await generateAccessNrefreshToken(user._id)
+       //now send respionse 
      return res
          .status(200)
          .cookie("accessToken", accessToken,options)
@@ -241,9 +245,118 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
        
    }
 })
+
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body
+    const user = await User.findById(req.user?._id)//purane user ko lelo
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)//check old password
+    if (!isPasswordCorrect) {
+        throw new ApiError(400,"Invalid old pass")
+    }
+    user.password = newPassword//now change password with new one
+    await user.save({ validateBeforeSave: false })//save changes
+    return res
+        .status(200)
+    .json(new ApiResponse(200,{},"pass changeed successfully"))
+    
+})
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(200, req.user, "current user fetched successfully")//middlware me req.user run hogya
+    
+})
+//update text
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { fullname, email } = req.body
+    if (!fullname || !email) {
+        throw new ApiError(400, "All fields req")
+        
+    }
+  const user=  User.findByIdAndUpdate(
+        req.user?._id,//user find krne ka trika
+        {
+            $set: {
+                fullname,//1st way
+                email:email//2nd way
+            }
+        },
+        { new: true }//update k naad jo info h vo return hui
+    ).select("-password")//i dont want to change my password
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"))
+})
+
+//update files by multe
+const updateUserAvatar = asyncHandler(async(req, res) => {
+    const avatarLocalPath = req.file?.path//file lelo req me se
+    if (!avatarLocalPath) {
+        throw new ApiError(400,"avatar file is issing")
+    }
+    const avatar = await uploadOnCloudinary(avatarLocalPath)//upload on cloudnary
+    if (!avatar.url) {
+        throw new ApiError(400,"error while uplaoding on avatar")
+    }
+    //update avatar
+   const user= await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar:avatar.url
+            }
+        },
+        { new: true }
+        
+    ).select("-password")
+
+     return res
+        .status(200)
+        .json(
+        new ApiResponse(200,user,"avatar updated successfuklly")
+    )
+})
+
+const updateUserCoverImage = asyncHandler(async(req, res) => {
+    const CoverImageLocalPath = req.file?.path//file lelo req me se
+    if (!CoverImageLocalPath) {
+        throw new ApiError(400,"cover img file is issing")
+    }
+    const coverImage = await uploadOnCloudinary(CoverImageLocalPath)//upload on cloudnary from models...coverImage name shjould be same as models wala
+    if (!coverImage.url) {
+        throw new ApiError(400,"error while uplaoding on coverimg")
+    }
+    //update imagecover
+ const user=   await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage:coverImage.url
+            }
+        },
+        { new: true }
+        
+    ).select("-password")
+
+    //return res
+    return res
+        .status(200)
+        .json(
+        new ApiResponse(200,user,"coverimg updated successfuklly")
+    )
+})
+
+
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }

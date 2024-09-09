@@ -23,5 +23,6 @@ router.route("/login").post(loginUser)
 //secured routes pehle check krlo ki user login h already fir hi logout kr payenge ham isiliye middleware h verifyJWT
 //isiliye next() likjhte h verifyJWT ka kaam khtm hgya h ab logoutUser p jump krjo
 router.route("/logout").post(verifyJWT, logoutUser)
+//endpoint of refreshaccess token
 router.route("refresh-token").post(refreshAccessToken)
 export default router
