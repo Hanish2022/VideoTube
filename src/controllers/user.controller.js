@@ -264,7 +264,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
-        .json(200, req.user, "current user fetched successfully")//middlware me req.user run hogya
+        .json(new ApiResponse(200, req.user, "current user fetched successfully"))//middlware me req.user run hogya
     
 })
 //update text
@@ -310,7 +310,7 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         { new: true }
         
     ).select("-password")
-
+//MAKE A FUNC FOR DELETIN THE PREVIOUS FILE BEFORE UPDATING IT
      return res
         .status(200)
         .json(
@@ -339,12 +339,96 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
         
     ).select("-password")
 
+    //MAKE A FUNC FOR DELETIN THE PREVIOUS FILE BEFORE UPDATING IT
+
+
     //return res
     return res
         .status(200)
         .json(
         new ApiResponse(200,user,"coverimg updated successfuklly")
     )
+})
+
+//pipelines
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params//when we wanna go to profile of channel we hit on /chaiCode kind of route here req.params se url mileha hme
+    if (!username?.trim()) {
+        throw new ApiError(400,"username is missing")
+    }
+    const channel = await User.aggregate([//aggregate use kro
+        {//1st pipeline
+            $match: {
+                username:username?.toLowerCase()//filter from db jaha pe params wale username se match kr rhi h id
+            }
+        },
+        //ab hame username milgya h ab hame lookup krna h ki chai aur code k subs kitne h
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as:"subscribers"
+                
+            }//now we have hmare kitne subs h 
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as:"subscribedTo"
+            }//now we have hmne kitno ko sub kra h
+        },
+        //add both above fields
+        {
+            //addfields kya krta h ki ye jo fields h usko to rkhega hi aur sath me ye extra fields add krdeta h taaki data ek bar me hi send krde 
+            $addFields: {
+                subscriberCount: {
+                    $size:"$subscribers"
+                },
+                channelsSubscribedToCount: {
+                    $size:"$subscribedTo"
+                },
+                //now check if subscribed h or subscribe dikhana h
+                isSubscribed: {
+                    $cond: {
+                        //cond me if then and else hote h
+                        //if me merko ue dekhna h bas ki jo doc aaya h subscriber apke paas usme me hu ya nhi mera channel h ya ni
+                        //in ... id lelo ... field me jaake dekhlo present h ya ni h then else se
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else : false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                //project sirf selected cheeze deta h sb kuch nhi de deta
+                fullname: 1,
+                username: 1,
+                subscriberCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1,
+                //ye ye sab me show krna chahta hu
+            }
+        }
+    ])
+    console.log(channel);
+    if (!channel?.length) {
+        throw new ApiError(404,"channel does not exist")
+    }
+
+    return res
+        .status(200)
+        .json(
+        new ApiResponse(200,channel[0],"user channel fecthed successfully")
+    )
+    
 })
 
 
@@ -358,5 +442,6 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }

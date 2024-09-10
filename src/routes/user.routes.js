@@ -20,6 +20,10 @@ router.route("/register").post(
 //add login route
 router.route("/login").post(loginUser)
 
+// router.get('/', (req, res) => {
+//   res.send('Hello from Users API');
+// });
+
 //secured routes pehle check krlo ki user login h already fir hi logout kr payenge ham isiliye middleware h verifyJWT
 //isiliye next() likjhte h verifyJWT ka kaam khtm hgya h ab logoutUser p jump krjo
 router.route("/logout").post(verifyJWT, logoutUser)
